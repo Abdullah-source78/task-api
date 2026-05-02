@@ -8,7 +8,7 @@ from models import Base, TaskDB
 app = FastAPI()
 
 
-# 🔹 Create tables (on startup)
+# ✅ Create tables on startup
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
@@ -24,7 +24,6 @@ def get_db():
 
 
 # 🔹 Pydantic Schemas
-
 class TaskCreate(BaseModel):
     title: str
     completed: bool = False
@@ -35,7 +34,7 @@ class TaskUpdate(BaseModel):
     completed: bool
 
 
-# ✅ IMPORTANT (Response Model)
+# ✅ Response Model (ONLY ONE)
 class TaskResponse(BaseModel):
     id: int
     title: str
@@ -46,8 +45,7 @@ class TaskResponse(BaseModel):
 
 
 # 🔹 Routes
-
-@app.get("/")
+@app.get("/", tags=["Health"])
 def home():
     return {"message": "API is working"}
 
