@@ -1,19 +1,27 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
-from typing import List
-from typing import Optional
-from database import SessionLocal
-from models import TaskDB
+from sqlalchemy.orm import Session
+
+from database import SessionLocal, engine
+from models import Base, TaskDB
 
 app = FastAPI()
 
+# Create tables
+Base.metadata.create_all(bind=engine)
 
+
+# 🔹 DB Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# 🔹 Pydantic Schemas
 class TaskCreate(BaseModel):
-    title: str
-    completed: bool = False
-
-class Task(BaseModel):
-    id: int
     title: str
     completed: bool = False
 
@@ -22,68 +30,52 @@ class TaskUpdate(BaseModel):
     title: str
     completed: bool
 
+
+# 🔹 Routes
 @app.get("/")
 def home():
     return {"message": "API is working"}
 
-@app.get("/tasks")
-def get_tasks():
-    db = SessionLocal()
-    tasks = db.query(TaskDB).all()
-    return tasks
 
+@app.get("/tasks")
+def get_tasks(db: Session = Depends(get_db)):
+    return db.query(TaskDB).all()
 
 
 @app.post("/tasks")
-def create_task(task: TaskCreate):
-
-    try:
-        db = SessionLocal()
-
-        new_task = TaskDB(
-            title=task.title,
-            completed=task.completed
-        )
-
-        db.add(new_task)
-        db.commit()
-        db.refresh(new_task)
-    finally:
-        db.close()
-
+def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+    new_task = TaskDB(
+        title=task.title,
+        completed=task.completed
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
     return new_task
 
+
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, updated_task: TaskUpdate):
-    try:
-        db = SessionLocal()
+def update_task(task_id: int, updated_task: TaskUpdate, db: Session = Depends(get_db)):
+    task = db.query(TaskDB).filter(TaskDB.id == task_id).first()
 
-        task = db.query(TaskDB).filter(TaskDB.id == task_id).first()
+    if not task:
+        return {"error": "Task not found"}
 
-        if not task:
-            return {"error": "Task not found"}
+    task.title = updated_task.title
+    task.completed = updated_task.completed
 
-        task.title = updated_task.title
-        task.completed = updated_task.completed
-
-        db.commit()
-        db.refresh(task)
-    finally:
-        db.close()
-
+    db.commit()
+    db.refresh(task)
     return task
 
-app.delete("/tasks/{task_id}")
-def delete_task(task_id: int):
-    try:
-        db = SessionLocal()
-        task = db.query(TaskDB).filter(TaskDB.id == task_id).first()
 
-        if not task:
-            return {"error": "Task not found"}
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(TaskDB).filter(TaskDB.id == task_id).first()
 
-        db.delete(task)
-        db.commit()
-    finally:
-        db.close()
+    if not task:
+        return {"error": "Task not found"}
+
+    db.delete(task)
+    db.commit()
     return {"message": "Task deleted"}
