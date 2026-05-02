@@ -7,8 +7,11 @@ from models import Base, TaskDB
 
 app = FastAPI()
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+
+# 🔹 Create tables (on startup)
+@app.on_event("startup")
+def startup():
+    Base.metadata.create_all(bind=engine)
 
 
 # 🔹 DB Dependency
@@ -21,6 +24,7 @@ def get_db():
 
 
 # 🔹 Pydantic Schemas
+
 class TaskCreate(BaseModel):
     title: str
     completed: bool = False
@@ -31,18 +35,29 @@ class TaskUpdate(BaseModel):
     completed: bool
 
 
+# ✅ IMPORTANT (Response Model)
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    completed: bool
+
+    class Config:
+        orm_mode = True
+
+
 # 🔹 Routes
+
 @app.get("/")
 def home():
     return {"message": "API is working"}
 
 
-@app.get("/tasks")
+@app.get("/tasks", response_model=list[TaskResponse])
 def get_tasks(db: Session = Depends(get_db)):
     return db.query(TaskDB).all()
 
 
-@app.post("/tasks")
+@app.post("/tasks", response_model=TaskResponse)
 def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     new_task = TaskDB(
         title=task.title,
@@ -54,7 +69,7 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     return new_task
 
 
-@app.put("/tasks/{task_id}")
+@app.put("/tasks/{task_id}", response_model=TaskResponse)
 def update_task(task_id: int, updated_task: TaskUpdate, db: Session = Depends(get_db)):
     task = db.query(TaskDB).filter(TaskDB.id == task_id).first()
 
