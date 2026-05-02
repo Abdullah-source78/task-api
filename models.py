@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean
-from database import engine
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -10,5 +9,3 @@ class TaskDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
     completed = Column(Boolean, default=False)
-
-Base.metadata.create_all(bind=engine)
