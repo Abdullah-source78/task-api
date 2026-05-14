@@ -45,7 +45,7 @@ class TaskResponse(BaseModel):
 # 🔹 Routes
 @app.get("/", tags=["Health"])
 def home():
-    return {"message": "API is working"}
+    return {"message": "Local API is working"}
 
 
 @app.get("/tasks", response_model=list[TaskResponse])
