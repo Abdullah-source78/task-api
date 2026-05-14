@@ -1,17 +1,15 @@
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from database import SessionLocal, engine ,Base
+from models.task import TaskDB
+from routers.auth import router as auth_router
 
-from database import SessionLocal, engine
-from models import Base, TaskDB
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.include_router(auth_router)
 
-
-# ✅ Create tables on startup
-@app.on_event("startup")
-def startup():
-    Base.metadata.create_all(bind=engine)
 
 
 # 🔹 DB Dependency
